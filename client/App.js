@@ -1,6 +1,9 @@
 import { WebView } from "react-native-webview";
 
-const serverURL = "http://192.168.100.82:8000";
+const host = '192.168.100.82';
+const port = 8000;
+
+const serverURL = `http://${host}:${port}`;
 
 const authURL = `${serverURL}/auth`; 
 const imageURL = `${serverURL}/image.png`; 
@@ -59,7 +62,8 @@ export default function App() {
         backgroundColor: "black",
       }}
       source={{
-        html,
+        html, // Cookie management doesn't work
+        // uri: serverURL // Cookie management works
       }}
     />
   );

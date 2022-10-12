@@ -13,33 +13,34 @@ const createTemplate = (content) => `
     <html>
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                html {
-                    background: white;
-                }
-                body {
-                    height: 100%;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: stretch;
-                    justify-content: center;
-                }
-            </style>
         </head>
         <body>${content}</body>
     </html>
 `
 
-const unauthenticatedIndexTemplate = createTemplate(`
-    <form action="${authPathName}" method="POST">
-        <input type="submit" value="authenticate" />
-    </form>
-    <a href="${imagePathName}">view image</a>
-`)
+const indexTemplate = createTemplate(`
+    <textarea id="textarea">
+    </textarea>
+    <img id="img" style="height: 100px;" />
+    <script>
+    const textareaElement = document.getElementById("textarea");
+    const imgElement = document.getElementById("img")
+    
+    imgElement.addEventListener("error", (event) => {
+        textareaElement.value = textareaElement.value + " | " + "image load failed";
+    })
 
-const authenticatedIndexTemplate = createTemplate(`
-    <h1>Authenticated</h1>
-    <a href="${imagePathName}">view image</a>
+    fetch("${authPathName}").then(response => {
+        if (response.ok) {
+            textareaElement.value = "authenticated";
+            imgElement.src = "${imagePathName}";
+        } else {
+            textareaElement.value = "authentication failed with response status: " + response.status;
+        }
+    }).catch(error => {
+        textareaElement.value = "failed to connect with server";
+    });
+    </script>
 `)
 
 const appendResWithCORSHeaders = (res) => {
@@ -49,7 +50,7 @@ const appendResWithCORSHeaders = (res) => {
 const appendResWithAuthHeaders = (res) => {
     // Cookie lifetime is set to 1min
     const expiresInSeconds = 60;
-    const expiresDate = new Date(Date.now() + 1000 * expiresInSeconds);
+    const expiresDate = new Date(Date.now() + expiresInSeconds * 1000);
     const expiresDateText = expiresDate.toUTCString();
 
     res.setHeader("Set-Cookie", `${cookieSample}; Path=/; Expires=${expiresDateText}; Max-Age=${expiresInSeconds}`);
@@ -65,23 +66,15 @@ const requestListener = function (req, res) {
 
     if (url === rootPathName) {
         res.setHeader("Content-Type", "text/html");
-        res.setHeader('Cache-Control', 'no-store');
-
         res.writeHead(200);
-
-        if (headers.cookie === cookieSample) {
-            res.end(authenticatedIndexTemplate);
-        } else {
-            res.end(unauthenticatedIndexTemplate);
-        }
+        res.end(indexTemplate);
     }
 
     if (url === authPathName) {
         appendResWithAuthHeaders(res);
 
-        res.setHeader('Content-type','application/json');
         res.writeHead(202);
-        res.end('{ authenticated: true }');
+        res.end();
     }
 
     if (url === imagePathName) {
@@ -96,8 +89,8 @@ const requestListener = function (req, res) {
                 }
             });
         } else {
-            res.writeHead(401, {'Content-type':'text/html'})
-            res.end("<h1>Unauthorized</h1>");    
+            res.writeHead(401)
+            res.end();
         }
     }
 };
